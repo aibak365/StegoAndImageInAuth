@@ -1,0 +1,116 @@
+<html>
+<head>
+  <style>
+    body {
+    font-family: Arial, sans-serif;
+    background-image: url('https://getwallpapers.com/wallpaper/full/7/f/3/1335960-large-beautiful-space-hd-desktop-wallpapers-1920x1080-for-samsung.jpg');
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+.login-container {
+    width: 350px;
+    padding: 30px;
+    background-color: rgba(255, 255, 255, 0.5); /* 50% opacity */
+    margin: 100px auto;
+    box-shadow: 0px 0px 5px 0px rgba(0,0,0,0.1);
+}
+
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.input-container {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+input {
+    width: 100%;
+    padding: 5px;
+    font-size: 14px;
+}
+
+.password-toggle {
+    display: block;
+    text-align: right;
+    cursor: pointer;
+    font-size: 12px;
+    color: #007BFF;
+}
+
+.btn-container {
+    display: flex;
+    justify-content: space-between;
+}
+
+button {
+    width: 48%;
+    padding: 8px;
+    font-size: 16px;
+    border: none;
+    cursor: pointer;
+}
+
+button[type="submit"] {
+    background-color: #007BFF;
+    color: #ffffff;
+}
+
+button[type="button"] {
+    background-color: #007BFF;
+    color: #ffffff;
+    border: 1px solid #007BFF;
+}
+    
+  </style>
+</head>
+<body onload='document.form1.text1.focus ()'>
+    
+  <div class="login-container">
+    <h2>Login</h2>
+    {% for message in messages %}
+    <h5>{{message}}</h5>
+    {% endfor %}
+    <form method="POST" action="log_in" enctype="multipart/form-data">
+      {% csrf_token %}
+        <div class="input-container">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <div class="input-container">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+            <span class="password-toggle">Show</span>
+        </div>
+        <div class="input-container">
+            <label for="image1">Upload Image</label>
+            <input type="file" id="image1" name="image1" required onchange="handleImageUpload()">
+            <p id="upload-status"></p>
+        </div>
+        <div class="btn-container">
+            <button type="submit">Log in</button>
+            <button type="button" onclick="window.location.href='http://127.0.0.1:8000/register'">Sign Up</button>
+        </div>
+    </form>
+</div>
+  <script>
+   document.querySelector('.password-toggle').addEventListener('click', function () {
+    var passwordInput = document.querySelector('#password');
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        this.textContent = 'Hide';
+    } else {
+        passwordInput.type = 'password';
+        this.textContent = 'Show';
+    }
+});
+
+    </script>
+</body>
+</html>
