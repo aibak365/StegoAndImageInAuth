@@ -22,7 +22,6 @@
         p {
             max-width: 600px;
         }
-        /* Added styles for the button */
         .login-button {
             display: inline-block;
             margin-top: 20px;
@@ -40,15 +39,21 @@
             background-color: #0056b3;
         }
     </style>
+    <script>
+        function downloadImage() {
+            var link = document.createElement('a');
+            link.href = document.querySelector('img').src;
+            link.download = 'Download.jpg';
+            link.click();
+        }
+    </script>
 </head>
 <body>
-    <img src="{{ image_data_url }}" alt="Your image">
+    <img src="{{ image_data_url }}" alt="Your image" onclick="downloadImage()">
     <p>
-        To save the image, right-click on it and select "Save Image As...".<br>
-        Choose a location on your device to save the image, then click "Save".
-        Please use this image for login and keep it secret always
+        To save the image, click on it.<br>
+        Please use this image for login and keep it secret always and don't share it with anyone
     </p>
-    <!-- Added a button that redirects to the login page -->
     <a href="http://127.0.0.1:8000/log_in" class="login-button">Go to Login Page</a>
 </body>
 </html>

@@ -228,7 +228,7 @@ def register(request):
             
     else:
         form = RegistrationForm()
-
+        
     return render(request, 'register.html', {'form': form})
 
 #Here is the login process, note (we made the function called log_in to avoid overload, pls keep it like that)
@@ -268,7 +268,7 @@ def log_in(request):
             else:
                 messages.info(request,'No image file uploaded')
                 return redirect('log_in')
-    
+
     return render(request, 'log_in.html')
 
 
