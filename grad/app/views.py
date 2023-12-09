@@ -2,15 +2,12 @@ import base64
 import binascii
 import imghdr
 from django.shortcuts import render,redirect
-from django.http import FileResponse, HttpResponse, HttpResponseRedirect
-from django.contrib.auth import authenticate, login, get_user_model
-from django.contrib.auth.hashers import make_password,check_password
+from django.contrib.auth import authenticate, login
 from django.contrib import messages
 from PIL import Image
 import io
 import hashlib
 from PIL import Image
-from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from app.models import User
 from .form import RegistrationForm
@@ -44,6 +41,7 @@ def encrypt_aes(plain_text):
     cipher_text_str = base64.b64encode(cipher_text).decode('utf-8')
 
     return cipher_text_str
+
 #Xor between 2 hashes
 def xor_hashes(hash1, hash2):
     # Convert the hashes from hexadecimal to bytes
@@ -69,6 +67,7 @@ def image_digest(image_data):
     hex_dig = hash_object.hexdigest()
     return hex_dig
 
+#Check if the file is image
 def is_image(file):
     image_types = [ 'jpeg', 'png']
     return imghdr.what(file) in image_types
@@ -106,15 +105,6 @@ def LSB(request,image, msg):
             # Return the output image
             return output_image
 
-#Caluclate the hash of the file
-def calculate_hash(file_path):
-    # Open the file in binary mode
-    with open(file_path, 'rb') as file:
-        bytes = file.read()  # Read the entire file as bytes
-        readable_hash = hashlib.sha256(bytes).hexdigest()  # Calculate the SHA-256 hash
-    return readable_hash
-
-
 
 def check_image_size(image):
     size = image.size
@@ -124,21 +114,20 @@ def check_image_size(image):
 #Here is the register process
 def register(request):
     if request.method == 'POST':
+        #Checking email
         email=request.POST['email']
         if User.objects.filter(email=email).exists():
                     messages.info(request, 'Email already has been used!')
                     return redirect('register')
-        password=request.POST['password']
-        confirm=request.POST['confirm']
-
-        if password != confirm:
-            messages.info(request, 'Unmatch passwords')
-            return redirect('register')
-        
+        for i in email:
+            if (i<'A' or i>'Z') and (i<'a' or i>'z') and (i<'0' or i>'9') and i not in  ['_', '.','@']:
+                messages.info(request,"please enter a valide mail: only contain alphapets and numbers")
+                return redirect('register')
+              
+        #Creating form
         form = RegistrationForm(request.POST) 
         if form.is_valid():
             user = form.save(commit=False)
-            password_hash = hash_string(password)
 
             #Checking Image
             if 'image1' in request.FILES :
@@ -146,32 +135,45 @@ def register(request):
             else:
                 messages.info(request,"Please enter a correct imgae1")
                 return redirect('register')
+            
             if 'image2' in request.FILES :
                 image2 = request.FILES['image2']
             else:
                 messages.info(request,"Please enter a correct imgae2")
                 return redirect('register')
+            
             if 'image3' in request.FILES:
                 image3 = request.FILES['image3']
             else:
                 messages.info(request,"Please enter a correct imgae3")
                 return redirect(request,'register')
+            
             if not is_image(image1) or check_image_size(image1)>8:
                 messages.info(request,"Please enter a correct imgae1")
                 return redirect('register')
+            
             if not is_image(image2) or check_image_size(image2)>8:
                 messages.info("Please enter a correct imgae2")
                 return redirect(request,'register')
+            
             if not is_image(image3) or check_image_size(image3)>8:
                 messages.info(request,"Please enter a correct imgae3")
                 return redirect('register')
             
-            #Checking password
+            #Checking Password
+            password=request.POST['password']
+            confirm=request.POST['confirm']
+
+            if password != confirm:
+                messages.info(request, 'Unmatch passwords')
+                return redirect('register')
+            
             cnt_strength_password_capital = True
             cnt_strength_password_lower = True
             cnt_strength_password_special = True
             cnt_strength_password_number = True
             cnt_strength_password_len = 0
+
             for i in password:
                 if i>='A' and i<='Z':
                     cnt_strength_password_capital = False
@@ -182,37 +184,36 @@ def register(request):
                 elif i>='0' and i<='9':
                     cnt_strength_password_number = False
                 cnt_strength_password_len+=1
-
+            
             if cnt_strength_password_len<8 or ( cnt_strength_password_capital or  cnt_strength_password_lower or  cnt_strength_password_special or cnt_strength_password_number):
                 messages.info(request,"Please pick a better password contains: 8 chars, lower, capital, special and a number")
                 return redirect('register')
-        
-        
+            password_hash = hash_string(password)
+
             # Read the images into memory
             image1_data = Image.open(io.BytesIO(image1.read()))
             image2_data = Image.open(io.BytesIO(image2.read()))
             image3_data = Image.open(io.BytesIO(image3.read()))
 
-            #Hiding by LSB R1
+            #Hiding by LSB R1 && calculating the digest of stego image
             stego_image1_R1 = LSB(request,image1_data,password_hash)
-            #calculating the digest R1
             stego_digest1_R1 = image_digest(stego_image1_R1)
 
-            #Hiding by LSB R2
+            #Hiding by LSB R2 && calculateing the digest and of stego2 and encrypt it
             stego_image2_R2 = LSB(request,image2_data,stego_digest1_R1)
-            #calculating the digest R2
             stego_digest2_R2 = encrypt_aes(image_digest(stego_image2_R2))
             
-
+            #Hiding by LSB R3 && calculateing the digest and of stego3
             stego_image3_R3 = LSB(request,image3_data,stego_digest2_R2)
             stego_digest3_R3 = image_digest(stego_image3_R3)
                         
-            #Saving the user in the database
-                
+            #Saving the user in the database    
             xor=xor_hashes(stego_digest3_R3,password_hash)
             user.email = email
             user.set_password(hash_string(xor))
             user.save() 
+
+            #Handle the image for the user
             image_io = io.BytesIO()
             stego_image3_R3.save(image_io, format='PNG')
 
@@ -234,19 +235,30 @@ def register(request):
 def log_in(request):
     
     if request.method == 'POST':
+            
+            password = str(request.POST['password'])            
+
+            #Checking email
             email = request.POST['email']
-            password = request.POST['password']            
+            for i in email:
+                if (i<'A' or i>'Z') and (i<'a' or i>'z') and (i<'0' or i>'9') and i not in  ['_', '.','@']:
+                    messages.info(request,"please enter a valide mail: only contain alphapets and numbers")
+                    return redirect('login')
+            
             if 'image1' in request.FILES:
                 image1 = request.FILES['image1']
                 if is_image(image1):
+
                     image1_data = Image.open(io.BytesIO(image1.read()))
                     password_hash = hash_string(password)
                     image1_digest = image_digest(image1_data)
                     xor_hash = hash_string(xor_hashes(image1_digest,password_hash))
                     user = authenticate(request, username=email, password=xor_hash) 
+
                     if user is not None:
                         login(request,user)
                         return redirect('hello') 
+                    
                     else:
                         messages.info(request,"Invalid emair or credetinals")
                         return redirect('log_in')             
@@ -260,14 +272,13 @@ def log_in(request):
     return render(request, 'log_in.html')
 
 
-
-@login_required
-def yourStego(request):
-    logout(request)
-    return render(request, 'yourStego.html')
+#Here the client will get his/her image
+#The index page
 def index(request):
     return render(request, "index.html")
 
+#A hello page
+@login_required
 def hello(request):
     return render(request, 'hello.html')
 
