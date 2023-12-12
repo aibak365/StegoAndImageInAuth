@@ -3,6 +3,7 @@
 <head>
     <style>
         body {
+            animation: grow 1s;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -37,6 +38,10 @@
         }
         .login-button:hover {
             background-color: #0056b3;
+        }
+        @keyframes grow {
+            0% { transform: scale(.2); }
+        100% { transform: scale(1); }
         }
     </style>
     <script>

@@ -2,12 +2,16 @@
 <head>
   <style>
     body {
+    animation: grow 1s;
     font-family: Arial, sans-serif;
     background-image: url('https://th.bing.com/th/id/R.8f8a914ca69fdcaf81b15c4dd29f46e9?rik=hrMpgqjw96TuJw&riu=http%3a%2f%2fgetwallpapers.com%2fwallpaper%2ffull%2f0%2f2%2fb%2f400220.jpg&ehk=ZdGTc%2f84AknSSso4ZgwXnQzdDGPLi%2fEuB5apT7rF1ek%3d&risl=&pid=ImgRaw&r=0');
     background-repeat: no-repeat;
     background-size: cover;
 }
-
+@keyframes grow {
+            0% { transform: scale(.2); }
+        100% { transform: scale(1); }
+}
 .login-container {
     width: 350px;
     padding: 30px;

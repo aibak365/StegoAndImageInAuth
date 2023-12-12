@@ -3,6 +3,22 @@
 <head>
     <title>StegoForAuth</title>
     <style>
+        @keyframes slideInFromLeft {
+            0% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(0);
+            }
+        }
+        @keyframes slideInFromBottom {
+            0% {
+                transform: translateY(100%);
+            }
+            100% {
+                transform: translateY(0);
+            }
+        }
         body { 
             font-family: Arial, sans-serif; 
             background-image: url('https://cdn.wallpapersafari.com/56/32/Or1CAT.jpg');
@@ -18,10 +34,12 @@
             background: rgba(255, 255, 255, 0.5); 
             box-shadow: 0px 0px 5px 0px rgba(0,0,0,0.1); 
             text-align: center;
+            animation: slideInFromLeft 1s ease-out;
         }
         .description { 
             font-size: 20px; 
             margin-bottom: 20px; 
+            animation: slideInFromBottom 3s ease-out;
         }
         .button { 
             display: inline-block; 
@@ -31,6 +49,10 @@
             color: #ffffff; 
             text-decoration: none; 
             border-radius: 5px; 
+            transition: transform 0.3s;
+        }
+        .button:hover {
+            transform: scale(1.1);
         }
     </style>
 </head>

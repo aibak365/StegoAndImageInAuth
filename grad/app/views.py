@@ -1,3 +1,18 @@
+"""
+
+███████╗████████╗███████╗ ██████╗  ██████╗     ███████╗ ██████╗ ██████╗      █████╗ ██╗   ██╗████████╗██╗  ██╗
+██╔════╝╚══██╔══╝██╔════╝██╔════╝ ██╔═══██╗    ██╔════╝██╔═══██╗██╔══██╗    ██╔══██╗██║   ██║╚══██╔══╝██║  ██║
+███████╗   ██║   █████╗  ██║  ███╗██║   ██║    █████╗  ██║   ██║██████╔╝    ███████║██║   ██║   ██║   ███████║
+╚════██║   ██║   ██╔══╝  ██║   ██║██║   ██║    ██╔══╝  ██║   ██║██╔══██╗    ██╔══██║██║   ██║   ██║   ██╔══██║
+███████║   ██║   ███████╗╚██████╔╝╚██████╔╝    ██║     ╚██████╔╝██║  ██║    ██║  ██║╚██████╔╝   ██║   ██║  ██║
+╚══════╝   ╚═╝   ╚══════╝ ╚═════╝  ╚═════╝     ╚═╝      ╚═════╝ ╚═╝  ╚═╝    ╚═╝  ╚═╝ ╚═════╝    ╚═╝   ╚═╝  ╚═╝
+                                                                                                              
+Author: Black_pixles
+"""
+
+
+
+
 import base64
 import binascii
 import imghdr
@@ -16,6 +31,9 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
 import os
 from django.contrib.auth import logout
+import hashlib
+from channels.generic.websocket import AsyncWebsocketConsumer
+from django.http import HttpResponse
 
 #Aes encryption
 def encrypt_aes(plain_text):
@@ -115,7 +133,8 @@ def check_image_size(image):
 def register(request):
     if request.method == 'POST':
         #Checking email
-        email=request.POST['email']
+        email = str(request.POST['email'])
+        email = email.lower()
         if User.objects.filter(email=email).exists():
                     messages.info(request, 'Email already has been used!')
                     return redirect('register')
@@ -225,10 +244,12 @@ def register(request):
 
             # Pass the data URL to the template
             return render(request, 'yourStego.html', {'image_data_url': data_url})
-            
+        else:
+            messages.info(request, "Please enter a valid email")
+
     else:
         form = RegistrationForm()
-        
+
     return render(request, 'register.html', {'form': form})
 
 #Here is the login process, note (we made the function called log_in to avoid overload, pls keep it like that)
@@ -260,7 +281,7 @@ def log_in(request):
                         return redirect('hello') 
                     
                     else:
-                        messages.info(request,"Invalid emair or credetinals")
+                        messages.info(request,"Invalid emair or credentials")
                         return redirect('log_in')             
                 else:
                     messages.info("Please upload jpg or png image only")
@@ -268,7 +289,7 @@ def log_in(request):
             else:
                 messages.info(request,'No image file uploaded')
                 return redirect('log_in')
-
+    
     return render(request, 'log_in.html')
 
 
