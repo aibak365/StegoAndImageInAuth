@@ -215,17 +215,28 @@ def register(request):
             image3_data = Image.open(io.BytesIO(image3.read()))
 
             #Hiding by LSB R1 && calculating the digest of stego image
-            stego_image1_R1 = LSB(request,image1_data,password_hash)
-            stego_digest1_R1 = image_digest(stego_image1_R1)
+            try:
+                stego_image1_R1 = LSB(request,image1_data,password_hash)
+                stego_digest1_R1 = image_digest(stego_image1_R1)
+            except:
+                messages.info("Please pick a better image")
+                return redirect("register")
 
             #Hiding by LSB R2 && calculateing the digest and of stego2 and encrypt it
-            stego_image2_R2 = LSB(request,image2_data,stego_digest1_R1)
-            stego_digest2_R2 = encrypt_aes(image_digest(stego_image2_R2))
+            try:
+                stego_image2_R2 = LSB(request,image2_data,stego_digest1_R1)
+                stego_digest2_R2 = encrypt_aes(image_digest(stego_image2_R2))
+            except:
+                messages.info("Please pick a better image")
+                return redirect("register")
             
             #Hiding by LSB R3 && calculateing the digest and of stego3
-            stego_image3_R3 = LSB(request,image3_data,stego_digest2_R2)
-            stego_digest3_R3 = image_digest(stego_image3_R3)
-                        
+            try:
+                stego_image3_R3 = LSB(request,image3_data,stego_digest2_R2)
+                stego_digest3_R3 = image_digest(stego_image3_R3)
+            except:
+                messages.info("Please pick a better image")
+                return redirect("register")
             #Saving the user in the database    
             xor=xor_hashes(stego_digest3_R3,password_hash)
             user.email = email
