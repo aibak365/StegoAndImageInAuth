@@ -95,10 +95,6 @@ def LSB(request,image, msg):
             # Convert the message to binary
             binary_message = ''.join(format(ord(i), '08b') for i in msg)
 
-            # Ensure the message will fit in the image
-            if len(binary_message) > image.width * image.height:
-                messages.info(request,"Please pick a better image")
-
             # Create a new image to hold the output
             output_image = Image.new(image.mode, image.size)
             output_pixels = output_image.load()
@@ -122,7 +118,6 @@ def LSB(request,image, msg):
 
             # Return the output image
             return output_image
-
 
 def check_image_size(image):
     size = image.size
@@ -237,6 +232,7 @@ def register(request):
             except:
                 messages.info("Please pick a better image")
                 return redirect("register")
+            
             #Saving the user in the database    
             xor=xor_hashes(stego_digest3_R3,password_hash)
             user.email = email
