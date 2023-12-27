@@ -11,3 +11,5 @@ class User(AbstractBaseUser):
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=512)
     USERNAME_FIELD = 'email'
+    clientKey = models.CharField(max_length = 512)
+

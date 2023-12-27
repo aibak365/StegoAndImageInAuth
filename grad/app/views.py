@@ -12,7 +12,7 @@ Author: Black_pixles
 
 
 
-
+import numpy as np
 import base64
 import binascii
 import imghdr
@@ -35,30 +35,10 @@ import hashlib
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.http import HttpResponse
 
-#Aes encryption
-def encrypt_aes(plain_text):
-    # Convert the plain text from string to bytes
-    plain_text_bytes = plain_text.encode('utf-8')
-
-    # Generate a random 256-bit key
-    key = os.urandom(32)
-
-    # Create a new AES cipher object with the key and AES.MODE_CBC mode
-    backend = default_backend()
-    cipher = Cipher(algorithms.AES(key), modes.CBC(os.urandom(16)), backend=backend)
-    encryptor = cipher.encryptor()
-
-    # Make sure the plain text is a multiple of 16 bytes (AES block size)
-    padder = padding.PKCS7(128).padder()
-    padded_data = padder.update(plain_text_bytes) + padder.finalize()
-
-    # Encrypt the plain text
-    cipher_text = encryptor.update(padded_data) + encryptor.finalize()
-
-    # Encode the ciphertext and the key to base64 strings
-    cipher_text_str = base64.b64encode(cipher_text).decode('utf-8')
-
-    return cipher_text_str
+# Generate a random 32-byte key and convert it to a string
+def keyString():
+    key = base64.b64encode(os.urandom(32)).decode('utf-8')
+    return key
 
 #Xor between 2 hashes
 def xor_hashes(hash1, hash2):
@@ -91,33 +71,67 @@ def is_image(file):
     return imghdr.what(file) in image_types
 
 #Hiding data into img by LSB
-def LSB(request,image, msg):
-            # Convert the message to binary
-            binary_message = ''.join(format(ord(i), '08b') for i in msg)
+def LSB(image, msg):
+    # Convert the message to binary
+    binary_message = ''.join(format(ord(i), '08b') for i in msg)
+    
+    # Calculate the total number of bits that can be hidden in the image
+    total_bits = image.width * image.height * len(image.getpixel((0, 0)))
 
-            # Create a new image to hold the output
-            output_image = Image.new(image.mode, image.size)
-            output_pixels = output_image.load()
+    # Check if the binary_message is too long for the image
+    if len(binary_message) > total_bits:
+        raise ValueError("The message is too long to be hidden in the image.")
+    
+    # Create a new image to hold the output
+    output_image = Image.new(image.mode, image.size)
+    output_pixels = output_image.load()
 
-            # Iterate over the pixels in the image
-            message_index = 0
-            for y in range(image.height):
-                for x in range(image.width):
-                    # Get the current pixel
-                    pixel = list(image.getpixel((x, y)))
+    # Iterate over the pixels in the image
+    message_index = 0
+    for y in range(image.height):
+        for x in range(image.width):
 
-                    # Modify the pixel to contain the message
-                    for n in range(len(pixel)):
-                        if message_index < len(binary_message):
-                            # Change the least significant bit of each color component
-                            pixel[n] = pixel[n] & ~1 | int(binary_message[message_index])
-                            message_index += 1
+            # Get the current pixel
+            pixel = list(image.getpixel((x, y)))
 
-                    # Write the modified pixel to the output image
-                    output_pixels[x, y] = tuple(pixel)
+            # Modify the pixel to contain the message
+            for n in range(len(pixel)):
+                if message_index < len(binary_message):
+                    # Change the least significant bit of each color component
+                    pixel[n] = pixel[n] & ~1 | int(binary_message[message_index])
+                    message_index += 1
 
-            # Return the output image
-            return output_image
+            # Write the modified pixel to the output image
+            output_pixels[x, y] = tuple(pixel)
+
+    # Return the output image
+    return output_image
+
+def extract_LSB(image):
+    # Convert the image to a numpy array
+    image_array = np.array(image)
+
+    # Extract the least significant bit of each color component
+    lsb_array = np.bitwise_and(image_array, 1)
+
+    # Convert the binary message to a string
+    binary_message = ''.join(map(str, lsb_array.flatten()))
+
+    # Convert the binary message to text
+    output_message = ''.join(chr(int(binary_message[i:i+8], 2)) for i in range(0, len(binary_message), 8))
+
+    # Find the start and end of the hidden message
+    start = output_message.find("#####")
+    end = output_message.find("$$$$$")
+
+    # Extract the hidden message
+    if start != -1 and end != -1:
+        output_message = output_message[start+5:end]
+    else:
+        output_message = "No hidden message found in the image."
+
+    # Return the output message
+    return output_message
 
 def check_image_size(image):
     size = image.size
@@ -211,7 +225,7 @@ def register(request):
 
             #Hiding by LSB R1 && calculating the digest of stego image
             try:
-                stego_image1_R1 = LSB(request,image1_data,password_hash)
+                stego_image1_R1 = LSB(image1_data,password_hash)
                 stego_digest1_R1 = image_digest(stego_image1_R1)
             except:
                 messages.info("Please pick a better image")
@@ -219,15 +233,17 @@ def register(request):
 
             #Hiding by LSB R2 && calculateing the digest and of stego2 and encrypt it
             try:
-                stego_image2_R2 = LSB(request,image2_data,stego_digest1_R1)
-                stego_digest2_R2 = encrypt_aes(image_digest(stego_image2_R2))
+                stego_image2_R2 = LSB(image2_data,stego_digest1_R1)
             except:
                 messages.info("Please pick a better image")
                 return redirect("register")
             
-            #Hiding by LSB R3 && calculateing the digest and of stego3
+            
+            #Hiding by LSB the stego_key && calculateing the digest and of stego3
             try:
-                stego_image3_R3 = LSB(request,image3_data,stego_digest2_R2)
+                keyAes = keyString()
+
+                stego_image3_R3 = LSB(image3_data,image_digest(stego_image2_R2)+"#####"+keyAes+"$$$$$")
                 stego_digest3_R3 = image_digest(stego_image3_R3)
             except:
                 messages.info("Please pick a better image")
@@ -237,6 +253,7 @@ def register(request):
             xor=xor_hashes(stego_digest3_R3,password_hash)
             user.email = email
             user.set_password(hash_string(xor))
+            user.clientKey = keyAes
             user.save() 
 
             #Handle the image for the user
@@ -272,22 +289,21 @@ def log_in(request):
                 if (i<'A' or i>'Z') and (i<'a' or i>'z') and (i<'0' or i>'9') and i not in  ['_', '.','@']:
                     messages.info(request,"please enter a valide mail: only contain alphapets and numbers")
                     return redirect('login')
-            
             if 'image1' in request.FILES:
                 image1 = request.FILES['image1']
                 if is_image(image1):
-
                     image1_data = Image.open(io.BytesIO(image1.read()))
                     password_hash = hash_string(password)
                     image1_digest = image_digest(image1_data)
                     xor_hash = hash_string(xor_hashes(image1_digest,password_hash))
                     user = authenticate(request, username=email, password=xor_hash) 
-
-                    if user is not None:
+                    yourKey = extract_LSB(image1_data)
+                    if user is not None and yourKey == user.clientKey:
                         login(request,user)
                         return redirect('hello') 
                     
                     else:
+                        messages.info(request,yourKey)
                         messages.info(request,"Invalid emair or credentials")
                         return redirect('log_in')             
                 else:
