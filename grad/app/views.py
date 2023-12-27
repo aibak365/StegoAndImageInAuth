@@ -74,18 +74,14 @@ def is_image(file):
 def LSB(image, msg):
     # Convert the message to binary
     binary_message = ''.join(format(ord(i), '08b') for i in msg)
-    
     # Calculate the total number of bits that can be hidden in the image
     total_bits = image.width * image.height * len(image.getpixel((0, 0)))
-
     # Check if the binary_message is too long for the image
     if len(binary_message) > total_bits:
         raise ValueError("The message is too long to be hidden in the image.")
-    
     # Create a new image to hold the output
     output_image = Image.new(image.mode, image.size)
     output_pixels = output_image.load()
-
     # Iterate over the pixels in the image
     message_index = 0
     for y in range(image.height):
@@ -303,7 +299,6 @@ def log_in(request):
                         return redirect('hello') 
                     
                     else:
-                        messages.info(request,yourKey)
                         messages.info(request,"Invalid emair or credentials")
                         return redirect('log_in')             
                 else:
