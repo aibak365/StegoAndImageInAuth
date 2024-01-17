@@ -12,6 +12,7 @@ Author: Black_pixles
 
 
 
+import math
 import numpy as np
 import base64
 import binascii
@@ -34,6 +35,8 @@ from django.contrib.auth import logout
 import hashlib
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.http import HttpResponse
+import numpy as np
+import math
 
 # Generate a random 32-byte key and convert it to a string
 def keyString():
@@ -139,6 +142,26 @@ def check_image_size(image):
     size = image.size
     size_in_MB = size / (1024 * 1024)  # Convert size to MB
     return size_in_MB
+
+# This code is not part of the project, this just to show in front of the commitee the value of the PSNR
+def calculate_psnr(img1, img2):
+    # Convert the PIL Image objects to NumPy arrays
+    img1 = np.array(img1)
+    img2 = np.array(img2)
+
+    # Ensure the images are in the range [0, 255]
+    img1 = img1.astype(np.float64)
+    img2 = img2.astype(np.float64)
+
+    # Calculate the Mean Squared Error between the two images
+    mse = np.mean((img1 - img2) ** 2)
+    if mse == 0:
+        return float('inf')
+
+    # Assuming the maximum pixel value is 255
+    max_pixel = 255.0
+    psnr = 20 * math.log10(max_pixel / math.sqrt(mse))
+    return psnr
      
 #Here is the register process
 def register(request):
@@ -230,26 +253,26 @@ def register(request):
             try:
                 stego_image1_R1 = LSB(image1_data,password_hash)
                 stego_digest1_R1 = image_digest(stego_image1_R1)
+                print(calculate_psnr(stego_image1_R1,image1_data))
             except:
-                messages.info("Please pick a better image")
+                messages.info(request,"Please pick a better image")
                 return redirect("register")
 
             #Hiding by LSB R2 && calculateing the digest and of stego2 
             try:
                 stego_image2_R2 = LSB(image2_data,stego_digest1_R1)
             except:
-                messages.info("Please pick a better image")
+                messages.info(request,"Please pick a better image")
                 return redirect("register")
             
             
             #Hiding by LSB the stego_key && calculateing the digest and of stego3
             try:
                 keyHided = keyString()
-
                 stego_image3_R3 = LSB(image3_data,image_digest(stego_image2_R2)+"#####"+keyHided+"$$$$$")
                 stego_digest3_R3 = image_digest(stego_image3_R3)
             except:
-                messages.info("Please pick a better image")
+                messages.info(request,"Please pick a better image")
                 return redirect("register")
             
             #Saving the user in the database    
@@ -292,7 +315,11 @@ def log_in(request):
             if 'image1' in request.FILES:
                 image1 = request.FILES['image1']
                 if is_image(image1):
-                    image1_data = Image.open(io.BytesIO(image1.read()))
+                    try:
+                        image1_data = Image.open(io.BytesIO(image1.read()))
+                    except:
+                        messages.info(request,"Invalid image")
+                        return redirect("log_in")
                     password_hash = hash_string(password)
                     image1_digest = image_digest(image1_data)
                     xor_hash = hash_string(xor_hashes(image1_digest,password_hash))
