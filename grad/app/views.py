@@ -37,7 +37,7 @@ from django.http import HttpResponse
 
 # Generate a random 32-byte key and convert it to a string
 def keyString():
-    key = base64.b64encode(os.urandom(32)).decode('utf-8')
+    key = base64.b64encode(os.urandom(16)).decode('utf-8')
     return key
 
 #Xor between 2 hashes
@@ -74,21 +74,23 @@ def is_image(file):
 def LSB(image, msg):
     # Convert the message to binary
     binary_message = ''.join(format(ord(i), '08b') for i in msg)
+    
     # Calculate the total number of bits that can be hidden in the image
     total_bits = image.width * image.height * len(image.getpixel((0, 0)))
+    
     # Check if the binary_message is too long for the image
     if len(binary_message) > total_bits:
         raise ValueError("The message is too long to be hidden in the image.")
-    # Create a new image to hold the output
-    output_image = Image.new(image.mode, image.size)
-    output_pixels = output_image.load()
+    
+    # Convert the image to a NumPy array for efficient manipulation
+    np_image = np.array(image)
+    
     # Iterate over the pixels in the image
     message_index = 0
     for y in range(image.height):
         for x in range(image.width):
-
             # Get the current pixel
-            pixel = list(image.getpixel((x, y)))
+            pixel = np_image[y, x]
 
             # Modify the pixel to contain the message
             for n in range(len(pixel)):
@@ -98,7 +100,10 @@ def LSB(image, msg):
                     message_index += 1
 
             # Write the modified pixel to the output image
-            output_pixels[x, y] = tuple(pixel)
+            np_image[y, x] = pixel
+
+    # Convert the NumPy array back to an image
+    output_image = Image.fromarray(np_image)
 
     # Return the output image
     return output_image
@@ -129,6 +134,7 @@ def extract_LSB(image):
     # Return the output message
     return output_message
 
+#Calculate the image of the size
 def check_image_size(image):
     size = image.size
     size_in_MB = size / (1024 * 1024)  # Convert size to MB
@@ -149,6 +155,7 @@ def register(request):
                 return redirect('register')
               
         #Creating form
+        # the rest of the code is not in the image
         form = RegistrationForm(request.POST) 
         if form.is_valid():
             user = form.save(commit=False)
@@ -227,7 +234,7 @@ def register(request):
                 messages.info("Please pick a better image")
                 return redirect("register")
 
-            #Hiding by LSB R2 && calculateing the digest and of stego2 and encrypt it
+            #Hiding by LSB R2 && calculateing the digest and of stego2 
             try:
                 stego_image2_R2 = LSB(image2_data,stego_digest1_R1)
             except:
@@ -237,9 +244,9 @@ def register(request):
             
             #Hiding by LSB the stego_key && calculateing the digest and of stego3
             try:
-                keyAes = keyString()
+                keyHided = keyString()
 
-                stego_image3_R3 = LSB(image3_data,image_digest(stego_image2_R2)+"#####"+keyAes+"$$$$$")
+                stego_image3_R3 = LSB(image3_data,image_digest(stego_image2_R2)+"#####"+keyHided+"$$$$$")
                 stego_digest3_R3 = image_digest(stego_image3_R3)
             except:
                 messages.info("Please pick a better image")
@@ -247,9 +254,9 @@ def register(request):
             
             #Saving the user in the database    
             xor=xor_hashes(stego_digest3_R3,password_hash)
-            user.email = email
             user.set_password(hash_string(xor))
-            user.clientKey = keyAes
+            user.email = email
+            user.clientKey = keyHided
             user.save() 
 
             #Handle the image for the user
@@ -274,11 +281,8 @@ def register(request):
 
 #Here is the login process, note (we made the function called log_in to avoid overload, pls keep it like that)
 def log_in(request):
-    
     if request.method == 'POST':
-            
             password = str(request.POST['password'])            
-
             #Checking email
             email = request.POST['email']
             for i in email:
@@ -297,7 +301,6 @@ def log_in(request):
                     if user is not None and yourKey == user.clientKey:
                         login(request,user)
                         return redirect('hello') 
-                    
                     else:
                         messages.info(request,"Invalid emair or credentials")
                         return redirect('log_in')             
@@ -307,11 +310,9 @@ def log_in(request):
             else:
                 messages.info(request,'No image file uploaded')
                 return redirect('log_in')
-    
     return render(request, 'log_in.html')
 
 
-#Here the client will get his/her image
 #The index page
 def index(request):
     return render(request, "index.html")
