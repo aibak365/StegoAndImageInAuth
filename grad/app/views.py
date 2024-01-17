@@ -110,7 +110,7 @@ def LSB(image, msg):
 
     # Return the output image
     return output_image
-
+#To extract the hidden key in the image
 def extract_LSB(image):
     # Convert the image to a numpy array
     image_array = np.array(image)
